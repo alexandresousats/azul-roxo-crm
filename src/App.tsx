@@ -36,7 +36,7 @@ const App = () => (
           
           {/* App Routes with MainLayout */}
           <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<Navigate to="/auth/login" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="clientes" element={<Clientes />} />
             <Route path="tarefas" element={<Tarefas />} />

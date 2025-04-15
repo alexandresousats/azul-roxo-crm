@@ -1,43 +1,42 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpCircle, ArrowDownCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart as LucideBarChart, Filter } from "lucide-react";
+import { ArrowUpCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart as LucideBarChart, Filter } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-
-// Sample data for charts
-const revenueData = [
-  { name: "Jan", value: 12000 },
-  { name: "Fev", value: 15000 },
-  { name: "Mar", value: 10000 },
-  { name: "Abr", value: 18000 },
-  { name: "Mai", value: 22000 },
-  { name: "Jun", value: 20000 },
-  { name: "Jul", value: 25000 },
-];
-
-const clientRevenueData = [
-  { name: "Cliente A", value: 25000 },
-  { name: "Cliente B", value: 18000 },
-  { name: "Cliente C", value: 15000 },
-  { name: "Cliente D", value: 12000 },
-  { name: "Cliente E", value: 8000 },
-  { name: "Outros", value: 22000 },
-];
-
-const pipelineData = [
-  { name: "Lead", value: 15, color: "#E5E7EB" },
-  { name: "Qualificado", value: 10, color: "#93C5FD" },
-  { name: "Negociação", value: 8, color: "#4A5FC1" },
-  { name: "Fechado", value: 5, color: "#10B981" },
-  { name: "Perdido", value: 3, color: "#EF4444" },
-];
-
-const COLORS = ["#E5E7EB", "#93C5FD", "#4A5FC1", "#10B981", "#EF4444"];
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [timeFilter, setTimeFilter] = useState("mensal");
+  const { user } = useAuth();
+
+  const { data: clientesData = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('user_id', user?.id);
+      return data || [];
+    },
+    enabled: !!user
+  });
+
+  const clientesAtivos = clientesData.length;
+  const contratosFechados = clientesData.filter(cliente => cliente.status === 'fechado').length;
+  const valorTotal = clientesData
+    .filter(cliente => cliente.status === 'fechado')
+    .reduce((acc, cliente) => acc + (extractNumberFromCurrency(cliente.valor_estimado) || 0), 0);
+
+  const pipelineData = [
+    { name: "Lead", value: clientesData.filter(c => c.status === 'lead').length, color: "#E5E7EB" },
+    { name: "Qualificado", value: clientesData.filter(c => c.status === 'qualificado').length, color: "#93C5FD" },
+    { name: "Negociação", value: clientesData.filter(c => c.status === 'negociacao').length, color: "#4A5FC1" },
+    { name: "Fechado", value: clientesData.filter(c => c.status === 'fechado').length, color: "#10B981" },
+    { name: "Perdido", value: clientesData.filter(c => c.status === 'perdido').length, color: "#EF4444" },
+  ];
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -55,10 +54,8 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 45.231,89</div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% em relação ao mês anterior
-            </p>
+            <div className="text-2xl font-bold">R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <p className="text-xs text-muted-foreground">Total de contratos fechados</p>
           </CardContent>
         </Card>
         <Card className="stat-card">
@@ -67,10 +64,8 @@ const Dashboard = () => {
             <CheckCircle className="h-4 w-4 text-azul" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">
-              +4 em relação ao mês anterior
-            </p>
+            <div className="text-2xl font-bold">{contratosFechados}</div>
+            <p className="text-xs text-muted-foreground">Total de contratos</p>
           </CardContent>
         </Card>
         <Card className="stat-card">
@@ -79,10 +74,8 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-roxo" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">32</div>
-            <p className="text-xs text-muted-foreground">
-              +3 em relação ao mês anterior
-            </p>
+            <div className="text-2xl font-bold">{clientesAtivos}</div>
+            <p className="text-xs text-muted-foreground">Total de clientes</p>
           </CardContent>
         </Card>
       </div>

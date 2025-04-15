@@ -51,7 +51,6 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Status types and colors
 const statusOptions = [
   { value: "lead", label: "Lead", color: "bg-gray-200 text-gray-800" },
   { value: "desqualificado", label: "Desqualificado", color: "bg-red-100 text-red-800" },
@@ -62,14 +61,12 @@ const statusOptions = [
   { value: "negociacao", label: "Negociação", color: "bg-yellow-100 text-yellow-800" },
 ];
 
-// Priority types and colors
 const priorityOptions = [
   { value: "alta", label: "Alta", color: "bg-red-100 text-red-800" },
   { value: "media", label: "Média", color: "bg-yellow-100 text-yellow-800" },
   { value: "baixa", label: "Baixa", color: "bg-green-100 text-green-800" },
 ];
 
-// Client interface
 interface Cliente {
   id: number;
   nome: string;
@@ -87,12 +84,10 @@ interface Cliente {
   created_at?: string;
 }
 
-// Função de utilidade para extrair valores numéricos de strings monetárias
 const extractNumberFromCurrency = (currency: string): number => {
   if (!currency) return 0;
-  // Remove símbolos monetários e espaços, substitui vírgula por ponto
   const numericString = currency.replace(/[R$\s.]/g, '').replace(',', '.');
-  return parseFloat(numericString) || 0; // Retorna 0 se não conseguir converter
+  return parseFloat(numericString) || 0;
 };
 
 const Clientes = () => {
@@ -100,6 +95,7 @@ const Clientes = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState<Partial<Cliente>>({
     nome: "",
     empresa: "",
@@ -113,8 +109,8 @@ const Clientes = () => {
     data_fechamento: "",
     ultimo_contato: new Date().toISOString().split("T")[0],
   });
+  const [editingClient, setEditingClient] = useState<Cliente | null>(null);
 
-  // Fetch clients
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
@@ -129,7 +125,6 @@ const Clientes = () => {
     enabled: !!user
   });
 
-  // Add client mutation
   const addClientMutation = useMutation({
     mutationFn: async (clientData: Omit<Cliente, 'id' | 'created_at' | 'user_id'>) => {
       const { data, error } = await supabase
@@ -151,7 +146,6 @@ const Clientes = () => {
     }
   });
 
-  // Delete client mutation
   const deleteClientMutation = useMutation({
     mutationFn: async (clientId: string) => {
       const { error } = await supabase
@@ -170,26 +164,39 @@ const Clientes = () => {
     }
   });
 
-  // Update client status mutation
-  const updateClientStatusMutation = useMutation({
-    mutationFn: async ({ clientId, newStatus }: { clientId: string, newStatus: string }) => {
-      const { error } = await supabase
+  const updateClientMutation = useMutation({
+    mutationFn: async (clientData: Cliente) => {
+      const { data, error } = await supabase
         .from('clientes')
-        .update({ status: newStatus })
-        .eq('id', clientId);
+        .update({
+          nome: clientData.nome,
+          empresa: clientData.empresa,
+          status: clientData.status,
+          prioridade: clientData.prioridade,
+          valor_estimado: clientData.valor_estimado,
+          responsavel: clientData.responsavel,
+          email: clientData.email,
+          telefone: clientData.telefone,
+          links: clientData.links,
+          data_fechamento: clientData.data_fechamento,
+        })
+        .eq('id', clientData.id)
+        .select()
+        .single();
 
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success("Status atualizado com sucesso");
+      setIsEditDialogOpen(false);
+      toast.success("Cliente atualizado com sucesso");
     },
     onError: (error: any) => {
-      toast.error("Erro ao atualizar status: " + error.message);
+      toast.error("Erro ao atualizar cliente: " + error.message);
     }
   });
 
-  // Filter clients based on search term
   const filteredClients = clients.filter((client) =>
     client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -205,19 +212,24 @@ const Clientes = () => {
     addClientMutation.mutate(newClient as Omit<Cliente, 'id' | 'created_at' | 'user_id'>);
   };
 
-  // Handle status change
+  const handleEditClient = () => {
+    if (!editingClient) return;
+    updateClientMutation.mutate(editingClient);
+  };
+
+  const openEditDialog = (client: Cliente) => {
+    setEditingClient(client);
+    setIsEditDialogOpen(true);
+  };
+
   const handleStatusChange = (clientId: number, newStatus: string) => {
     updateClientStatusMutation.mutate({ clientId: clientId.toString(), newStatus });
   };
 
-  // Handle priority change (simulated)
   const handlePriorityChange = (clientId: number, newPriority: string) => {
-    // In a real implementation, you would update the priority in the database
-    // and then invalidate the query to refetch the data.
     toast.info("Funcionalidade de prioridade não implementada");
   };
 
-  // Get status badge color
   const getStatusBadge = (status: string) => {
     const statusOption = statusOptions.find((option) => option.value === status);
     return (
@@ -227,7 +239,6 @@ const Clientes = () => {
     );
   };
 
-  // Get priority badge color
   const getPriorityBadge = (priority: string) => {
     const priorityOption = priorityOptions.find((option) => option.value === priority);
     return (
@@ -237,7 +248,6 @@ const Clientes = () => {
     );
   };
 
-  // Handle client removal
   const handleRemoveClient = (clientId: number) => {
     deleteClientMutation.mutate(clientId.toString());
   };
@@ -420,6 +430,174 @@ const Clientes = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Editar Cliente</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do cliente
+              </DialogDescription>
+            </DialogHeader>
+            {editingClient && (
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-nome" className="text-sm font-medium">Nome*</label>
+                    <Input
+                      id="edit-nome"
+                      value={editingClient.nome}
+                      onChange={(e) => setEditingClient({ ...editingClient, nome: e.target.value })}
+                      placeholder="Nome do cliente"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit-empresa" className="text-sm font-medium">
+                      Empresa*
+                    </label>
+                    <Input
+                      id="edit-empresa"
+                      value={editingClient.empresa}
+                      onChange={(e) => setEditingClient({ ...editingClient, empresa: e.target.value })}
+                      placeholder="Nome da empresa"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-status" className="text-sm font-medium">
+                      Status
+                    </label>
+                    <Select
+                      value={editingClient.status}
+                      onValueChange={(value) => setEditingClient({ ...editingClient, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit-prioridade" className="text-sm font-medium">
+                      Prioridade
+                    </label>
+                    <Select
+                      value={editingClient.prioridade}
+                      onValueChange={(value) => setEditingClient({ ...editingClient, prioridade: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a prioridade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorityOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-email" className="text-sm font-medium">
+                      Email*
+                    </label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editingClient.email}
+                      onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit-telefone" className="text-sm font-medium">
+                      Telefone
+                    </label>
+                    <Input
+                      id="edit-telefone"
+                      value={editingClient.telefone}
+                      onChange={(e) => setEditingClient({ ...editingClient, telefone: e.target.value })}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-valor_estimado" className="text-sm font-medium">
+                      Valor Estimado
+                    </label>
+                    <Input
+                      id="edit-valor_estimado"
+                      value={editingClient.valor_estimado}
+                      onChange={(e) => setEditingClient({ ...editingClient, valor_estimado: e.target.value })}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit-responsavel" className="text-sm font-medium">
+                      Responsável
+                    </label>
+                    <Input
+                      id="edit-responsavel"
+                      value={editingClient.responsavel}
+                      onChange={(e) => setEditingClient({ ...editingClient, responsavel: e.target.value })}
+                      placeholder="Nome do responsável"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-links" className="text-sm font-medium">
+                      Links
+                    </label>
+                    <Input
+                      id="edit-links"
+                      value={editingClient.links}
+                      onChange={(e) => setEditingClient({ ...editingClient, links: e.target.value })}
+                      placeholder="website.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit-data_fechamento" className="text-sm font-medium">
+                      Data Estimada de Fechamento
+                    </label>
+                    <Input
+                      id="edit-data_fechamento"
+                      type="date"
+                      value={editingClient.data_fechamento}
+                      onChange={(e) => setEditingClient({ ...editingClient, data_fechamento: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                className="bg-azul hover:bg-azul-light" 
+                onClick={handleEditClient}
+                disabled={updateClientMutation.isPending}
+              >
+                {updateClientMutation.isPending ? "Atualizando..." : "Atualizar Cliente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -541,7 +719,7 @@ const Clientes = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(client)}>
                               <Edit className="h-4 w-4 mr-2" /> Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleRemoveClient(client.id)}>
