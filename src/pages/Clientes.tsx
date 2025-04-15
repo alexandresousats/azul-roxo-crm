@@ -1,5 +1,7 @@
-
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
   TableBody,
@@ -67,80 +69,6 @@ const priorityOptions = [
   { value: "baixa", label: "Baixa", color: "bg-green-100 text-green-800" },
 ];
 
-// Sample data for clients
-const initialClients = [
-  {
-    id: 1,
-    nome: "João Silva",
-    empresa: "TechSolutions",
-    status: "qualificado",
-    prioridade: "alta",
-    valorEstimado: "R$ 15.000",
-    responsavel: "Ana Souza",
-    email: "joao@techsolutions.com",
-    telefone: "(11) 99999-8888",
-    links: "techsolutions.com",
-    dataFechamento: "2023-08-15",
-    ultimoContato: "2023-07-01",
-  },
-  {
-    id: 2,
-    nome: "Maria Oliveira",
-    empresa: "Marketing Digital",
-    status: "fechado",
-    prioridade: "media",
-    valorEstimado: "R$ 8.500",
-    responsavel: "Pedro Costa",
-    email: "maria@mktdigital.com",
-    telefone: "(11) 97777-6666",
-    links: "mktdigital.com",
-    dataFechamento: "2023-07-20",
-    ultimoContato: "2023-07-05",
-  },
-  {
-    id: 3,
-    nome: "Carlos Santos",
-    empresa: "Inovação Tech",
-    status: "negociacao",
-    prioridade: "alta",
-    valorEstimado: "R$ 25.000",
-    responsavel: "Ana Souza",
-    email: "carlos@inovacaotech.com",
-    telefone: "(11) 96666-5555",
-    links: "inovacaotech.com",
-    dataFechamento: "2023-09-10",
-    ultimoContato: "2023-06-28",
-  },
-  {
-    id: 4,
-    nome: "Amanda Rocha",
-    empresa: "Contabilidade Express",
-    status: "lead",
-    prioridade: "baixa",
-    valorEstimado: "R$ 5.000",
-    responsavel: "Pedro Costa",
-    email: "amanda@contabilidade.com",
-    telefone: "(11) 95555-4444",
-    links: "contabilidadeexpress.com",
-    dataFechamento: "2023-10-05",
-    ultimoContato: "2023-06-15",
-  },
-  {
-    id: 5,
-    nome: "Roberto Almeida",
-    empresa: "Consultoria RH",
-    status: "desqualificado",
-    prioridade: "baixa",
-    valorEstimado: "R$ 12.000",
-    responsavel: "Ana Souza",
-    email: "roberto@consultoriarh.com",
-    telefone: "(11) 94444-3333",
-    links: "consultoriarh.com",
-    dataFechamento: "2023-08-30",
-    ultimoContato: "2023-06-10",
-  },
-];
-
 // Client interface
 interface Cliente {
   id: number;
@@ -148,17 +76,20 @@ interface Cliente {
   empresa: string;
   status: string;
   prioridade: string;
-  valorEstimado: string;
+  valor_estimado: string;
   responsavel: string;
   email: string;
   telefone: string;
   links: string;
-  dataFechamento: string;
-  ultimoContato: string;
+  data_fechamento: string;
+  ultimo_contato: string;
+  user_id?: string;
+  created_at?: string;
 }
 
 const Clientes = () => {
-  const [clients, setClients] = useState<Cliente[]>(initialClients);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState<Partial<Cliente>>({
@@ -166,13 +97,88 @@ const Clientes = () => {
     empresa: "",
     status: "lead",
     prioridade: "media",
-    valorEstimado: "",
+    valor_estimado: "",
     responsavel: "",
     email: "",
     telefone: "",
     links: "",
-    dataFechamento: "",
-    ultimoContato: new Date().toISOString().split("T")[0],
+    data_fechamento: "",
+    ultimo_contato: new Date().toISOString().split("T")[0],
+  });
+
+  // Fetch clients
+  const { data: clients = [], isLoading } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user
+  });
+
+  // Add client mutation
+  const addClientMutation = useMutation({
+    mutationFn: async (clientData: Omit<Cliente, 'id' | 'created_at' | 'user_id'>) => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert([{ ...clientData, user_id: user?.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      setIsDialogOpen(false);
+      toast.success("Cliente adicionado com sucesso");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao adicionar cliente: " + error.message);
+    }
+  });
+
+  // Delete client mutation
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', clientId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success("Cliente removido com sucesso");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao remover cliente: " + error.message);
+    }
+  });
+
+  // Update client status mutation
+  const updateClientStatusMutation = useMutation({
+    mutationFn: async ({ clientId, newStatus }: { clientId: string, newStatus: string }) => {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ status: newStatus })
+        .eq('id', clientId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success("Status atualizado com sucesso");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao atualizar status: " + error.message);
+    }
   });
 
   // Filter clients based on search term
@@ -182,24 +188,25 @@ const Clientes = () => {
     client.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handle status change
-  const handleStatusChange = (clientId: number, newStatus: string) => {
-    setClients(
-      clients.map((client) =>
-        client.id === clientId ? { ...client, status: newStatus } : client
-      )
-    );
-    toast.success("Status atualizado com sucesso");
+  const handleAddClient = () => {
+    if (!newClient.nome || !newClient.empresa || !newClient.email) {
+      toast.error("Preencha os campos obrigatórios");
+      return;
+    }
+
+    addClientMutation.mutate(newClient as Omit<Cliente, 'id' | 'created_at' | 'user_id'>);
   };
 
-  // Handle priority change
+  // Handle status change
+  const handleStatusChange = (clientId: number, newStatus: string) => {
+    updateClientStatusMutation.mutate({ clientId: clientId.toString(), newStatus });
+  };
+
+  // Handle priority change (simulated)
   const handlePriorityChange = (clientId: number, newPriority: string) => {
-    setClients(
-      clients.map((client) =>
-        client.id === clientId ? { ...client, prioridade: newPriority } : client
-      )
-    );
-    toast.success("Prioridade atualizada com sucesso");
+    // In a real implementation, you would update the priority in the database
+    // and then invalidate the query to refetch the data.
+    toast.info("Funcionalidade de prioridade não implementada");
   };
 
   // Get status badge color
@@ -222,53 +229,9 @@ const Clientes = () => {
     );
   };
 
-  // Handle new client form submission
-  const handleAddClient = () => {
-    if (!newClient.nome || !newClient.empresa || !newClient.email) {
-      toast.error("Preencha os campos obrigatórios");
-      return;
-    }
-
-    const newId = Math.max(...clients.map((client) => client.id), 0) + 1;
-    const clientToAdd = {
-      id: newId,
-      nome: newClient.nome || "",
-      empresa: newClient.empresa || "",
-      status: newClient.status || "lead",
-      prioridade: newClient.prioridade || "media",
-      valorEstimado: newClient.valorEstimado || "R$ 0",
-      responsavel: newClient.responsavel || "",
-      email: newClient.email || "",
-      telefone: newClient.telefone || "",
-      links: newClient.links || "",
-      dataFechamento: newClient.dataFechamento || "",
-      ultimoContato: newClient.ultimoContato || new Date().toISOString().split("T")[0],
-    };
-
-    setClients([clientToAdd, ...clients]);
-    setIsDialogOpen(false);
-    toast.success("Cliente adicionado com sucesso");
-    
-    // Reset form
-    setNewClient({
-      nome: "",
-      empresa: "",
-      status: "lead",
-      prioridade: "media",
-      valorEstimado: "",
-      responsavel: "",
-      email: "",
-      telefone: "",
-      links: "",
-      dataFechamento: "",
-      ultimoContato: new Date().toISOString().split("T")[0],
-    });
-  };
-
   // Handle client removal
   const handleRemoveClient = (clientId: number) => {
-    setClients(clients.filter((client) => client.id !== clientId));
-    toast.success("Cliente removido com sucesso");
+    deleteClientMutation.mutate(clientId.toString());
   };
 
   return (
@@ -391,13 +354,13 @@ const Clientes = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="valorEstimado" className="text-sm font-medium">
+                  <label htmlFor="valor_estimado" className="text-sm font-medium">
                     Valor Estimado
                   </label>
                   <Input
-                    id="valorEstimado"
-                    value={newClient.valorEstimado}
-                    onChange={(e) => setNewClient({ ...newClient, valorEstimado: e.target.value })}
+                    id="valor_estimado"
+                    value={newClient.valor_estimado}
+                    onChange={(e) => setNewClient({ ...newClient, valor_estimado: e.target.value })}
                     placeholder="R$ 0,00"
                   />
                 </div>
@@ -427,14 +390,14 @@ const Clientes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="dataFechamento" className="text-sm font-medium">
+                  <label htmlFor="data_fechamento" className="text-sm font-medium">
                     Data Estimada de Fechamento
                   </label>
                   <Input
-                    id="dataFechamento"
+                    id="data_fechamento"
                     type="date"
-                    value={newClient.dataFechamento}
-                    onChange={(e) => setNewClient({ ...newClient, dataFechamento: e.target.value })}
+                    value={newClient.data_fechamento}
+                    onChange={(e) => setNewClient({ ...newClient, data_fechamento: e.target.value })}
                   />
                 </div>
               </div>
@@ -479,7 +442,13 @@ const Clientes = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
+                      Carregando clientes...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredClients.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                       Nenhum cliente encontrado
@@ -528,7 +497,7 @@ const Clientes = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                      <TableCell>{client.valorEstimado}</TableCell>
+                      <TableCell>{client.valor_estimado}</TableCell>
                       <TableCell>
                         <div className="flex items-center">
                           <UserCircle className="h-4 w-4 mr-1 text-muted-foreground" />
@@ -553,7 +522,7 @@ const Clientes = () => {
                       <TableCell>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
-                          {new Date(client.dataFechamento).toLocaleDateString('pt-BR')}
+                          {new Date(client.data_fechamento).toLocaleDateString('pt-BR')}
                         </div>
                       </TableCell>
                       <TableCell>

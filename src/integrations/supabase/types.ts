@@ -9,7 +9,141 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      clientes: {
+        Row: {
+          created_at: string
+          data_fechamento: string | null
+          email: string
+          empresa: string
+          id: string
+          links: string | null
+          nome: string
+          prioridade: string
+          responsavel: string | null
+          status: string
+          telefone: string | null
+          ultimo_contato: string | null
+          user_id: string
+          valor_estimado: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_fechamento?: string | null
+          email: string
+          empresa: string
+          id?: string
+          links?: string | null
+          nome: string
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          telefone?: string | null
+          ultimo_contato?: string | null
+          user_id: string
+          valor_estimado?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_fechamento?: string | null
+          email?: string
+          empresa?: string
+          id?: string
+          links?: string | null
+          nome?: string
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          telefone?: string | null
+          ultimo_contato?: string | null
+          user_id?: string
+          valor_estimado?: string | null
+        }
+        Relationships: []
+      }
+      perfis: {
+        Row: {
+          avatar_url: string | null
+          cargo: string | null
+          criado_em: string
+          id: string
+          nome: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          cargo?: string | null
+          criado_em?: string
+          id: string
+          nome?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          cargo?: string | null
+          criado_em?: string
+          id?: string
+          nome?: string | null
+        }
+        Relationships: []
+      }
+      Principal: {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      tarefas: {
+        Row: {
+          cliente: string | null
+          created_at: string
+          criado_em: string | null
+          data_entrega: string | null
+          descricao: string | null
+          id: string
+          prioridade: string
+          responsavel: string | null
+          status: string
+          titulo: string
+          user_id: string
+          valor_contrato: string | null
+        }
+        Insert: {
+          cliente?: string | null
+          created_at?: string
+          criado_em?: string | null
+          data_entrega?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          user_id: string
+          valor_contrato?: string | null
+        }
+        Update: {
+          cliente?: string | null
+          created_at?: string
+          criado_em?: string | null
+          data_entrega?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          titulo?: string
+          user_id?: string
+          valor_contrato?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,32 +1,29 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/context/auth";
 
 const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // This is a placeholder for Supabase authentication
-    // After Supabase integration, this will be replaced with actual auth code
     try {
-      // Simulate signup delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await signUp(email, password, name);
       toast.success("Conta criada com sucesso!");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error("Erro ao criar conta. Tente novamente.");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar conta. Tente novamente.");
     } finally {
       setIsLoading(false);
     }

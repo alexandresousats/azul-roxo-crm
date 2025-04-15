@@ -1,32 +1,26 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // This is a placeholder for Supabase authentication
-    // After Supabase integration, this will be replaced with actual auth code
     try {
-      // Simulate authentication delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just navigate to the dashboard
+      await signIn(email, password);
       toast.success("Login bem-sucedido!");
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error("Erro ao fazer login. Verifique suas credenciais.");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao fazer login. Verifique suas credenciais.");
     } finally {
       setIsLoading(false);
     }
