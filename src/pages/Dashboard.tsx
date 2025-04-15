@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpCircle, ArrowDownCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart, Filter } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart as LucideBarChart, Filter } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
 // Sample data for charts
@@ -172,7 +172,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <BarChart className="h-5 w-5 text-roxo" />
+                <LucideBarChart className="h-5 w-5 text-roxo" />
                 <span>Faturamento por Cliente</span>
               </CardTitle>
               <CardDescription>
