@@ -104,7 +104,13 @@ const Clientes = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addClientMutation.mutate(formData);
+    if (!user) return;
+    
+    // Add user_id to the formData
+    addClientMutation.mutate({
+      ...formData,
+      user_id: user.id
+    });
   };
 
   const resetForm = () => {
@@ -161,12 +167,15 @@ const Clientes = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Select value={filterStatus || ''} onValueChange={(value) => setFilterStatus(value || null)}>
+        <Select 
+          value={filterStatus || 'todos'} 
+          onValueChange={(value) => setFilterStatus(value === 'todos' ? null : value)}
+        >
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="todos">Todos</SelectItem>
             <SelectItem value="lead">Lead</SelectItem>
             <SelectItem value="qualificado">Qualificado</SelectItem>
             <SelectItem value="negociacao">Negociação</SelectItem>
