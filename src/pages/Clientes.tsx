@@ -87,6 +87,14 @@ interface Cliente {
   created_at?: string;
 }
 
+// Função de utilidade para extrair valores numéricos de strings monetárias
+const extractNumberFromCurrency = (currency: string): number => {
+  if (!currency) return 0;
+  // Remove símbolos monetários e espaços, substitui vírgula por ponto
+  const numericString = currency.replace(/[R$\s.]/g, '').replace(',', '.');
+  return parseFloat(numericString) || 0; // Retorna 0 se não conseguir converter
+};
+
 const Clientes = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();

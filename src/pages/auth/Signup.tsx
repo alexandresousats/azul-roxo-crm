@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Signup = () => {
   const [name, setName] = useState("");
