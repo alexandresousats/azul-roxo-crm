@@ -20,12 +20,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Cliente } from "@/types/cliente";
-import ClientesList from "@/components/clients/ClientesList";
-import { Loader2, PlusCircle, Search } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, PlusCircle, Search, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { updateClientStatus, deleteClient } from "@/utils/client-helpers";
+import EditClientDialog from "@/components/clients/EditClientDialog";
+import { extractNumberFromCurrency, formatCurrency } from "@/utils/format";
 
 const Clientes = () => {
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
@@ -33,6 +53,9 @@ const Clientes = () => {
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [editingClient, setEditingClient] = useState<Cliente | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   // Estado do novo cliente
   const [formData, setFormData] = useState({
@@ -127,6 +150,25 @@ const Clientes = () => {
     });
   };
 
+  const handleEditClient = (client: Cliente) => {
+    setEditingClient(client);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setIsEditDialogOpen(false);
+    setEditingClient(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (clientToDelete) {
+      deleteClient(clientToDelete, () => {
+        queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      });
+      setClientToDelete(null);
+    }
+  };
+
   // Filtragem
   const filteredClientes = clientes.filter(cliente => {
     const matchesSearch = searchTerm === '' || 
@@ -139,6 +181,26 @@ const Clientes = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "lead": return "Lead";
+      case "qualificado": return "Qualificado";
+      case "negociacao": return "Negociação";
+      case "fechado": return "Fechado";
+      case "perdido": return "Perdido";
+      default: return status;
+    }
+  };
+
+  const getPriorityLabel = (prioridade: string) => {
+    switch (prioridade) {
+      case "baixa": return "Baixa";
+      case "media": return "Média";
+      case "alta": return "Alta";
+      default: return prioridade;
+    }
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -185,26 +247,59 @@ const Clientes = () => {
         </Select>
       </div>
 
-      <Tabs defaultValue="cards" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="cards">Cards</TabsTrigger>
-          <TabsTrigger value="table" disabled>Tabela</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cards" className="space-y-4">
-          {isLoading ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <ClientesList 
-              data={filteredClientes} 
-              onClientUpdated={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })}
-              filterValue={searchTerm}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableCaption>Lista de clientes</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Empresa</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Valor Estimado</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Prioridade</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredClientes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    {searchTerm ? "Nenhum cliente encontrado." : "Nenhum cliente cadastrado. Adicione um novo cliente."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredClientes.map((cliente) => (
+                  <TableRow key={cliente.id}>
+                    <TableCell className="font-medium">{cliente.nome}</TableCell>
+                    <TableCell>{cliente.empresa}</TableCell>
+                    <TableCell>
+                      <div>{cliente.email}</div>
+                      {cliente.telefone && <div className="text-xs text-muted-foreground">{cliente.telefone}</div>}
+                    </TableCell>
+                    <TableCell>{cliente.valor_estimado}</TableCell>
+                    <TableCell>{getStatusLabel(cliente.status)}</TableCell>
+                    <TableCell>{getPriorityLabel(cliente.prioridade)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditClient(cliente)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setClientToDelete(cliente.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -351,6 +446,28 @@ const Clientes = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <EditClientDialog
+        isOpen={isEditDialogOpen}
+        onClose={handleCloseEditDialog}
+        client={editingClient}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })}
+      />
+
+      <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

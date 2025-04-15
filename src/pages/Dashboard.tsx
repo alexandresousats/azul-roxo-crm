@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,24 +14,35 @@ const Dashboard = () => {
   const [timeFilter, setTimeFilter] = useState("mensal");
   const { user } = useAuth();
 
+  // Get client data for the current user
   const { data: clientesData = [] } = useQuery({
-    queryKey: ['clientes'],
+    queryKey: ['clientes', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      if (!user) return [];
+
+      const { data, error } = await supabase
         .from('clientes')
         .select('*')
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Error fetching clientes:', error);
+        return [];
+      }
+      
       return data || [];
     },
     enabled: !!user
   });
 
+  // Calculate dashboard metrics
   const clientesAtivos = clientesData.length;
   const contratosFechados = clientesData.filter(cliente => cliente.status === 'fechado').length;
   const valorTotal = clientesData
     .filter(cliente => cliente.status === 'fechado')
-    .reduce((acc, cliente) => acc + (extractNumberFromCurrency(cliente.valor_estimado) || 0), 0);
+    .reduce((acc, cliente) => acc + extractNumberFromCurrency(cliente.valor_estimado), 0);
 
+  // Prepare pipeline data
   const pipelineData = [
     { name: "Lead", value: clientesData.filter(c => c.status === 'lead').length, color: "#E5E7EB" },
     { name: "Qualificado", value: clientesData.filter(c => c.status === 'qualificado').length, color: "#93C5FD" },
@@ -39,7 +51,8 @@ const Dashboard = () => {
     { name: "Perdido", value: clientesData.filter(c => c.status === 'perdido').length, color: "#EF4444" },
   ];
 
-  const revenueData = [
+  // Create data for revenue chart (sample data)
+  const monthlyRevenueData = [
     { name: "Jan", value: 0 },
     { name: "Fev", value: 0 },
     { name: "Mar", value: 0 },
@@ -54,6 +67,7 @@ const Dashboard = () => {
     { name: "Dez", value: 0 },
   ];
 
+  // Client revenue data
   const clientRevenueData = clientesData
     .filter(cliente => cliente.status === 'fechado')
     .slice(0, 5)
@@ -155,7 +169,7 @@ const Dashboard = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart 
-                    data={revenueData} 
+                    data={monthlyRevenueData} 
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <defs>

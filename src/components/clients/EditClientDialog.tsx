@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,8 +36,15 @@ const EditClientDialog = ({
   client,
   onSaved,
 }: EditClientDialogProps) => {
-  const [formData, setFormData] = useState<Partial<Cliente>>(client || {});
+  const [formData, setFormData] = useState<Partial<Cliente>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync form data when client changes
+  useEffect(() => {
+    if (client) {
+      setFormData({ ...client });
+    }
+  }, [client]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -74,10 +81,10 @@ const EditClientDialog = ({
     }
   };
 
-  if (!client) return null;
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Editar Cliente</DialogTitle>
