@@ -34,9 +34,11 @@ const App = () => (
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/signup" element={<Signup />} />
           
+          {/* Redirect root to login */}
+          <Route path="/" element={<Navigate to="/auth/login" replace />} />
+          
           {/* App Routes with MainLayout */}
           <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/auth/login" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="clientes" element={<Clientes />} />
             <Route path="tarefas" element={<Tarefas />} />
