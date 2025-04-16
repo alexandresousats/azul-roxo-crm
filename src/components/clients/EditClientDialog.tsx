@@ -20,11 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Cliente } from "@/types/cliente";
-import { supabase } from "@/integrations/supabase/client";
+import { updateClientInfo, deleteClient } from "@/utils/client-helpers";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import {
   Popover,
@@ -59,13 +59,33 @@ const EditClientDialog = ({
       
       // Set date fields if available
       if (client.data_fechamento) {
-        setDataFechamento(new Date(client.data_fechamento));
+        try {
+          // Handle both string and Date objects
+          if (typeof client.data_fechamento === 'string') {
+            setDataFechamento(new Date(client.data_fechamento));
+          } else {
+            setDataFechamento(client.data_fechamento);
+          }
+        } catch (error) {
+          console.error("Error parsing data_fechamento:", error);
+          setDataFechamento(undefined);
+        }
       } else {
         setDataFechamento(undefined);
       }
       
       if (client.ultimo_contato) {
-        setUltimoContato(new Date(client.ultimo_contato));
+        try {
+          // Handle both string and Date objects
+          if (typeof client.ultimo_contato === 'string') {
+            setUltimoContato(new Date(client.ultimo_contato));
+          } else {
+            setUltimoContato(client.ultimo_contato);
+          }
+        } catch (error) {
+          console.error("Error parsing ultimo_contato:", error);
+          setUltimoContato(undefined);
+        }
       } else {
         setUltimoContato(undefined);
       }
@@ -92,21 +112,16 @@ const EditClientDialog = ({
     // Include the date fields in the update
     const updateData = {
       ...formData,
-      data_fechamento: dataFechamento ? format(dataFechamento, 'yyyy-MM-dd') : null,
-      ultimo_contato: ultimoContato ? format(ultimoContato, 'yyyy-MM-dd') : null,
+      data_fechamento: dataFechamento,
+      ultimo_contato: ultimoContato,
     };
     
     try {
-      const { error } = await supabase
-        .from("clientes")
-        .update(updateData)
-        .eq("id", client.id);
-
-      if (error) throw error;
-
-      toast.success("Cliente atualizado com sucesso!");
-      onSaved();
-      onClose();
+      const result = await updateClientInfo(client.id, updateData, onSaved);
+      
+      if (result.success) {
+        onClose();
+      }
     } catch (error) {
       console.error("Erro ao atualizar cliente:", error);
       toast.error("Erro ao atualizar as informações do cliente");
@@ -119,23 +134,9 @@ const EditClientDialog = ({
     if (!client?.id) return;
     
     setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from("clientes")
-        .delete()
-        .eq("id", client.id);
-
-      if (error) throw error;
-
-      toast.success("Cliente excluído com sucesso!");
-      onSaved();
-      onClose();
-    } catch (error) {
-      console.error("Erro ao excluir cliente:", error);
-      toast.error("Erro ao excluir cliente");
-    } finally {
-      setIsLoading(false);
-    }
+    await deleteClient(client.id, onSaved);
+    setIsLoading(false);
+    onClose();
   };
 
   return (
@@ -237,6 +238,8 @@ const EditClientDialog = ({
                   <SelectItem value="negociacao">Negociação</SelectItem>
                   <SelectItem value="fechado">Fechado</SelectItem>
                   <SelectItem value="perdido">Perdido</SelectItem>
+                  <SelectItem value="novo">Novo</SelectItem>
+                  <SelectItem value="desqualificado">Desqualificado</SelectItem>
                 </SelectContent>
               </Select>
             </div>

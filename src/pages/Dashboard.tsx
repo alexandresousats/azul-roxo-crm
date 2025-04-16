@@ -15,7 +15,6 @@ import { extractNumberFromCurrency } from "@/utils/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
-  const [timeFilter, setTimeFilter] = useState("mensal");
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -56,29 +55,10 @@ const Dashboard = () => {
     { name: "Perdido", value: clientesData.filter(c => c.status === 'perdido').length, color: "#EF4444" },
   ], [clientesData]);
 
-  // Create sample monthly revenue data
-  const monthlyRevenueData = useMemo(() => {
-    // Get current month
-    const currentMonth = new Date().getMonth();
-    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    
-    // Generate sample data based on current month
-    return monthNames.map((month, index) => {
-      // For months in the past including current month, generate random revenue
-      if (index <= currentMonth) {
-        const baseValue = Math.floor(Math.random() * 50000) + 10000;
-        return { name: month, value: baseValue };
-      }
-      // For future months, set zero
-      return { name: month, value: 0 };
-    });
-  }, []);
-
-  // Client revenue data - calculate for real clients
-  const clientRevenueData = useMemo(() => {
+  // Create annual revenue data - simplified version
+  const annualRevenueData = useMemo(() => {
     return clientesData
       .filter(cliente => cliente.status === 'fechado' && cliente.valor_estimado)
-      .slice(0, 5)
       .map(cliente => ({
         name: cliente.empresa || cliente.nome,
         value: extractNumberFromCurrency(cliente.valor_estimado || "R$ 0")
@@ -136,33 +116,6 @@ const Dashboard = () => {
             <TabsTrigger value="clientes" className={`${isMobile ? 'flex-1' : ''}`}>Por Cliente</TabsTrigger>
             <TabsTrigger value="pipeline" className={`${isMobile ? 'flex-1' : ''}`}>Pipeline</TabsTrigger>
           </TabsList>
-          
-          <div className={`flex items-center ${isMobile ? 'w-full' : ''} space-x-2`}>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className={`${timeFilter === "semanal" ? "bg-muted" : ""} ${isMobile ? 'flex-1' : ''}`}
-              onClick={() => setTimeFilter("semanal")}
-            >
-              Semanal
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className={`${timeFilter === "mensal" ? "bg-muted" : ""} ${isMobile ? 'flex-1' : ''}`}
-              onClick={() => setTimeFilter("mensal")}
-            >
-              Mensal
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className={`${timeFilter === "anual" ? "bg-muted" : ""} ${isMobile ? 'flex-1' : ''}`}
-              onClick={() => setTimeFilter("anual")}
-            >
-              Anual
-            </Button>
-          </div>
         </div>
         
         <TabsContent value="faturamento" className="space-y-4">
@@ -170,17 +123,17 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <LineChart className="h-5 w-5 text-blue-500" />
-                <span>Faturamento {timeFilter}</span>
+                <span>Faturamento anual</span>
               </CardTitle>
               <CardDescription>
-                Evolução do faturamento ao longo do tempo
+                Evolução do faturamento ao longo do ano
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart 
-                    data={monthlyRevenueData} 
+                    data={annualRevenueData.length > 0 ? annualRevenueData : [{ name: 'Sem dados', value: 0 }]} 
                     margin={{ 
                       top: 10, 
                       right: 30, 
@@ -199,7 +152,7 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <Tooltip 
                       formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, "Faturamento"]}
-                      labelFormatter={(label) => `Mês: ${label}`}
+                      labelFormatter={(label) => `Cliente: ${label}`}
                     />
                     <Area 
                       type="monotone" 
@@ -207,6 +160,7 @@ const Dashboard = () => {
                       stroke="#6366F1" 
                       fillOpacity={1} 
                       fill="url(#colorRevenue)" 
+                      name="Valor"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -230,7 +184,7 @@ const Dashboard = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
-                    data={clientRevenueData.length > 0 ? clientRevenueData : [{ name: 'Sem dados', value: 0 }]}
+                    data={annualRevenueData.length > 0 ? annualRevenueData : [{ name: 'Sem dados', value: 0 }]}
                     margin={{ 
                       top: 10, 
                       right: 30, 

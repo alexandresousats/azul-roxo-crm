@@ -71,9 +71,24 @@ export const updateClientInfo = async (
   onSuccess?: () => void
 ) => {
   try {
+    // Convert date objects to strings in ISO format for database storage
+    const dataToSave = { ...clientData };
+    
+    if (clientData.ultimo_contato && typeof clientData.ultimo_contato !== 'string') {
+      dataToSave.ultimo_contato = clientData.ultimo_contato instanceof Date 
+        ? clientData.ultimo_contato.toISOString().split('T')[0]
+        : clientData.ultimo_contato;
+    }
+    
+    if (clientData.data_fechamento && typeof clientData.data_fechamento !== 'string') {
+      dataToSave.data_fechamento = clientData.data_fechamento instanceof Date
+        ? clientData.data_fechamento.toISOString().split('T')[0]
+        : clientData.data_fechamento;
+    }
+
     const { error } = await supabase
       .from("clientes")
-      .update(clientData)
+      .update(dataToSave)
       .eq("id", clientId);
 
     if (error) throw error;
