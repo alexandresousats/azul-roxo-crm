@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart as LucideBarChart, Filter } from "lucide-react";
+import { ArrowUpCircle, Users, CheckCircle, TrendingUp, LineChart, BarChart as LucideBarChart, Filter, Calendar } from "lucide-react";
 import { 
   Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, 
   Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend 
@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const Dashboard = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const [periodView, setPeriodView] = useState("annual");
 
   // Get client data for the current user
   const { data: clientesData = [], isLoading } = useQuery({
@@ -55,15 +56,26 @@ const Dashboard = () => {
     { name: "Perdido", value: clientesData.filter(c => c.status === 'perdido').length, color: "#EF4444" },
   ], [clientesData]);
 
-  // Create annual revenue data - simplified version
-  const annualRevenueData = useMemo(() => {
-    return clientesData
+  // Create revenue data - static data based on clients
+  const revenueData = useMemo(() => {
+    const filteredClients = clientesData
       .filter(cliente => cliente.status === 'fechado' && cliente.valor_estimado)
       .map(cliente => ({
         name: cliente.empresa || cliente.nome,
         value: extractNumberFromCurrency(cliente.valor_estimado || "R$ 0")
       }));
+      
+    return filteredClients;
   }, [clientesData]);
+  
+  // Prepare monthly data view (group by company)
+  const monthlyRevenueData = useMemo(() => {
+    // Just show the same data but formatted differently for monthly view
+    return revenueData.map(item => ({
+      ...item,
+      name: item.name.substring(0, 10) + (item.name.length > 10 ? '...' : '') // Truncate names for better display
+    }));
+  }, [revenueData]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -121,19 +133,44 @@ const Dashboard = () => {
         <TabsContent value="faturamento" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <LineChart className="h-5 w-5 text-blue-500" />
-                <span>Faturamento anual</span>
-              </CardTitle>
-              <CardDescription>
-                Evolução do faturamento ao longo do ano
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <LineChart className="h-5 w-5 text-blue-500" />
+                    <span>Faturamento</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Valor estimado por cliente
+                  </CardDescription>
+                </div>
+                
+                <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                  <Button 
+                    variant={periodView === "annual" ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setPeriodView("annual")}
+                    className="flex items-center gap-1"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Anual</span>
+                  </Button>
+                  <Button 
+                    variant={periodView === "monthly" ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setPeriodView("monthly")}
+                    className="flex items-center gap-1"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Mensal</span>
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart 
-                    data={annualRevenueData.length > 0 ? annualRevenueData : [{ name: 'Sem dados', value: 0 }]} 
+                    data={periodView === "annual" ? revenueData : monthlyRevenueData} 
                     margin={{ 
                       top: 10, 
                       right: 30, 
@@ -184,7 +221,7 @@ const Dashboard = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
-                    data={annualRevenueData.length > 0 ? annualRevenueData : [{ name: 'Sem dados', value: 0 }]}
+                    data={revenueData.length > 0 ? revenueData : [{ name: 'Sem dados', value: 0 }]}
                     margin={{ 
                       top: 10, 
                       right: 30, 

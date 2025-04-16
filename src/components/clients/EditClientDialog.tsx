@@ -24,7 +24,7 @@ import { updateClientInfo, deleteClient } from "@/utils/client-helpers";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parse } from "date-fns";
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import {
   Popover,
@@ -60,10 +60,12 @@ const EditClientDialog = ({
       // Set date fields if available
       if (client.data_fechamento) {
         try {
-          // Handle both string and Date objects
           if (typeof client.data_fechamento === 'string') {
-            setDataFechamento(new Date(client.data_fechamento));
-          } else {
+            const [year, month, day] = client.data_fechamento.split('-').map(Number);
+            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+              setDataFechamento(new Date(year, month - 1, day));
+            }
+          } else if (client.data_fechamento instanceof Date) {
             setDataFechamento(client.data_fechamento);
           }
         } catch (error) {
@@ -76,10 +78,12 @@ const EditClientDialog = ({
       
       if (client.ultimo_contato) {
         try {
-          // Handle both string and Date objects
           if (typeof client.ultimo_contato === 'string') {
-            setUltimoContato(new Date(client.ultimo_contato));
-          } else {
+            const [year, month, day] = client.ultimo_contato.split('-').map(Number);
+            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+              setUltimoContato(new Date(year, month - 1, day));
+            }
+          } else if (client.ultimo_contato instanceof Date) {
             setUltimoContato(client.ultimo_contato);
           }
         } catch (error) {
@@ -109,17 +113,15 @@ const EditClientDialog = ({
 
     setIsLoading(true);
     
-    // Include the date fields in the update
-    const updateData = {
-      ...formData,
-      data_fechamento: dataFechamento,
-      ultimo_contato: ultimoContato,
-    };
-    
     try {
-      const result = await updateClientInfo(client.id, updateData, onSaved);
+      const result = await updateClientInfo(client.id, {
+        ...formData,
+        data_fechamento: dataFechamento,
+        ultimo_contato: ultimoContato,
+      });
       
       if (result.success) {
+        onSaved();
         onClose();
       }
     } catch (error) {
