@@ -23,7 +23,7 @@ import {
   Phone, Link as LinkIcon, DollarSign, ClipboardList, 
   Star, X, CheckCircle, AlertTriangle, Lock, Plus, GitCompare
 } from "lucide-react";
-import { updateClientStatus } from "@/utils/client-helpers";
+import { updateClientStatus, updateClientPriority } from "@/utils/client-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import EditClientDialog from "./EditClientDialog";
 import { format } from "date-fns";
@@ -48,21 +48,8 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
     updateClientStatus(clientId, newStatus, onClientUpdated);
   };
 
-  const handlePriorityChange = async (clientId: string, priority: string) => {
-    try {
-      const { error } = await fetch('/api/clients/update-priority', {
-        method: 'POST',
-        body: JSON.stringify({ clientId, priority }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (error) throw error;
-      onClientUpdated();
-    } catch (error) {
-      console.error('Error updating priority:', error);
-    }
+  const handlePriorityChange = (clientId: string, priority: string) => {
+    updateClientPriority(clientId, priority, onClientUpdated);
   };
 
   // Status icon mapping
@@ -73,6 +60,8 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
       case "negociacao": return <GitCompare className="h-4 w-4 text-purple-500" />;
       case "fechado": return <Lock className="h-4 w-4 text-green-500" />;
       case "perdido": return <X className="h-4 w-4 text-red-500" />;
+      case "novo": return <Plus className="h-4 w-4 text-teal-500" />;
+      case "desqualificado": return <AlertTriangle className="h-4 w-4 text-orange-500" />;
       default: return <Plus className="h-4 w-4 text-gray-500" />;
     }
   };
@@ -195,6 +184,18 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                           <span>Perdido</span>
                         </div>
                       </SelectItem>
+                      <SelectItem value="novo">
+                        <div className="flex items-center gap-2">
+                          <Plus className="h-4 w-4 text-teal-500" />
+                          <span>Novo</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="desqualificado">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                          <span>Desqualificado</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -202,17 +203,7 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={client.prioridade}
-                    onValueChange={(value) => {
-                      // Update client priority
-                      const { error } = fetch('/api/clients/update', {
-                        method: 'POST',
-                        body: JSON.stringify({ id: client.id, prioridade: value }),
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                      });
-                      onClientUpdated();
-                    }}
+                    onValueChange={(value) => handlePriorityChange(client.id, value)}
                   >
                     <SelectTrigger className="w-[110px]">
                       <div className="flex items-center gap-2">

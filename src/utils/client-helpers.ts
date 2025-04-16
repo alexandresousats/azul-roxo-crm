@@ -64,3 +64,26 @@ export const deleteClient = async (
     toast.error("Erro ao excluir o cliente");
   }
 };
+
+export const updateClientInfo = async (
+  clientId: string,
+  clientData: Partial<Cliente>,
+  onSuccess?: () => void
+) => {
+  try {
+    const { error } = await supabase
+      .from("clientes")
+      .update(clientData)
+      .eq("id", clientId);
+
+    if (error) throw error;
+
+    toast.success("Informações do cliente atualizadas");
+    if (onSuccess) onSuccess();
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao atualizar cliente:", error);
+    toast.error("Erro ao atualizar informações do cliente");
+    return { success: false, error };
+  }
+};

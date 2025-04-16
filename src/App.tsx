@@ -46,10 +46,16 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes
+      staleTime: 1000 * 30, // 30 seconds
+      gcTime: 1000 * 60 * 5, // 5 minutes
       refetchOnReconnect: true,
     },
+    mutations: {
+      retry: 0,
+      onError: (error) => {
+        console.error('Mutation error:', error);
+      }
+    }
   },
 });
 

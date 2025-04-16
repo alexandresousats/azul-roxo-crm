@@ -9,15 +9,24 @@ import {
   ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SidebarProps {
   className?: string;
 }
 
 const Sidebar = ({ className }: SidebarProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  const [collapsed, setCollapsed] = useState(isMobile);
   const location = useLocation();
+
+  // Auto collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile]);
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -26,7 +35,7 @@ const Sidebar = ({ className }: SidebarProps) => {
   return (
     <div
       className={cn(
-        "flex h-screen flex-col border-r bg-sidebar transition-all duration-300",
+        "flex h-screen flex-col border-r bg-sidebar transition-all duration-300 relative",
         collapsed ? "w-16" : "w-64",
         className
       )}
@@ -35,7 +44,11 @@ const Sidebar = ({ className }: SidebarProps) => {
         variant="ghost" 
         size="icon" 
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute right-0 top-20 transform translate-x-1/2 z-10 bg-background border shadow-sm rounded-full"
+        className={cn(
+          "absolute z-10 bg-background border shadow-sm rounded-full",
+          "top-20 flex items-center justify-center",
+          collapsed ? "right-0 translate-x-1/2" : "right-0 translate-x-1/2"
+        )}
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </Button>
