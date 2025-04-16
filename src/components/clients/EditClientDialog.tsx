@@ -22,6 +22,16 @@ import {
 import { Cliente } from "@/types/cliente";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface EditClientDialogProps {
   isOpen: boolean;
@@ -38,11 +48,27 @@ const EditClientDialog = ({
 }: EditClientDialogProps) => {
   const [formData, setFormData] = useState<Partial<Cliente>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [dataFechamento, setDataFechamento] = useState<Date | undefined>(undefined);
+  const [ultimoContato, setUltimoContato] = useState<Date | undefined>(undefined);
+  const isMobile = useIsMobile();
 
   // Sync form data when client changes
   useEffect(() => {
     if (client) {
       setFormData({ ...client });
+      
+      // Set date fields if available
+      if (client.data_fechamento) {
+        setDataFechamento(new Date(client.data_fechamento));
+      } else {
+        setDataFechamento(undefined);
+      }
+      
+      if (client.ultimo_contato) {
+        setUltimoContato(new Date(client.ultimo_contato));
+      } else {
+        setUltimoContato(undefined);
+      }
     }
   }, [client]);
 
@@ -62,10 +88,18 @@ const EditClientDialog = ({
     if (!client?.id) return;
 
     setIsLoading(true);
+    
+    // Include the date fields in the update
+    const updateData = {
+      ...formData,
+      data_fechamento: dataFechamento ? format(dataFechamento, 'yyyy-MM-dd') : null,
+      ultimo_contato: ultimoContato ? format(ultimoContato, 'yyyy-MM-dd') : null,
+    };
+    
     try {
       const { error } = await supabase
         .from("clientes")
-        .update(formData)
+        .update(updateData)
         .eq("id", client.id);
 
       if (error) throw error;
@@ -81,20 +115,43 @@ const EditClientDialog = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!client?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from("clientes")
+        .delete()
+        .eq("id", client.id);
+
+      if (error) throw error;
+
+      toast.success("Cliente excluído com sucesso!");
+      onSaved();
+      onClose();
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast.error("Erro ao excluir cliente");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) onClose();
     }}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className={`${isMobile ? 'max-w-[95%]' : 'sm:max-w-[600px]'} max-h-[90vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle>Editar Cliente</DialogTitle>
           <DialogDescription>
-            Atualize as informações do cliente aqui. Clique em salvar quando terminar.
+            Atualize as informações do cliente aqui.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nome">Nome do contato</Label>
               <Input
@@ -118,7 +175,7 @@ const EditClientDialog = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -142,7 +199,7 @@ const EditClientDialog = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="responsavel">Responsável</Label>
               <Input
@@ -164,7 +221,7 @@ const EditClientDialog = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
@@ -201,6 +258,64 @@ const EditClientDialog = ({
               </Select>
             </div>
           </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Date picker for último contato */}
+            <div className="space-y-2">
+              <Label htmlFor="ultimo_contato">Último Contato</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !ultimoContato && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {ultimoContato ? format(ultimoContato, "dd/MM/yyyy") : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={ultimoContato}
+                    onSelect={setUltimoContato}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {/* Date picker for data fechamento */}
+            <div className="space-y-2">
+              <Label htmlFor="data_fechamento">Previsão de Fechamento</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dataFechamento && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dataFechamento ? format(dataFechamento, "dd/MM/yyyy") : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dataFechamento}
+                    onSelect={setDataFechamento}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="links">Links</Label>
@@ -213,18 +328,30 @@ const EditClientDialog = ({
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className={`${isMobile ? 'flex-col gap-2' : ''}`}>
             <Button
               type="button"
-              variant="outline"
-              onClick={onClose}
+              variant="destructive"
+              onClick={handleDelete}
               disabled={isLoading}
+              className={isMobile ? 'w-full' : ''}
             >
-              Cancelar
+              Excluir Cliente
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Salvar alterações"}
-            </Button>
+            <div className={`${isMobile ? 'flex flex-row w-full gap-2' : ''}`}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isLoading}
+                className={isMobile ? 'flex-1' : ''}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading} className={isMobile ? 'flex-1' : ''}>
+                {isLoading ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

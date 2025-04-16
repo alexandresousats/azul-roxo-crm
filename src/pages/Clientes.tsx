@@ -20,19 +20,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Cliente } from "@/types/cliente";
-import { Loader2, PlusCircle, Search, Pencil, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Search } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,9 +34,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { updateClientStatus, deleteClient } from "@/utils/client-helpers";
-import EditClientDialog from "@/components/clients/EditClientDialog";
-import { extractNumberFromCurrency, formatCurrency } from "@/utils/format";
+import { deleteClient } from "@/utils/client-helpers";
+import NotionTable from "@/components/clients/NotionTable";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Clientes = () => {
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
@@ -53,11 +44,10 @@ const Clientes = () => {
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [editingClient, setEditingClient] = useState<Cliente | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
-  // Estado do novo cliente
+  // State for new client
   const [formData, setFormData] = useState({
     nome: "",
     empresa: "",
@@ -70,7 +60,7 @@ const Clientes = () => {
     links: "",
   });
 
-  // Buscar clientes 
+  // Fetch clients 
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ['clientes', user?.id],
     queryFn: async () => {
@@ -93,7 +83,7 @@ const Clientes = () => {
     enabled: !!user
   });
 
-  // Adicionar cliente
+  // Add client
   const addClientMutation = useMutation({
     mutationFn: async (newClient: Omit<Cliente, 'id' | 'created_at'>) => {
       const { data, error } = await supabase.from('clientes').insert({
@@ -150,16 +140,6 @@ const Clientes = () => {
     });
   };
 
-  const handleEditClient = (client: Cliente) => {
-    setEditingClient(client);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleCloseEditDialog = () => {
-    setIsEditDialogOpen(false);
-    setEditingClient(null);
-  };
-
   const handleDeleteConfirm = () => {
     if (clientToDelete) {
       deleteClient(clientToDelete, () => {
@@ -169,7 +149,7 @@ const Clientes = () => {
     }
   };
 
-  // Filtragem
+  // Filtering
   const filteredClientes = clientes.filter(cliente => {
     const matchesSearch = searchTerm === '' || 
       cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -181,26 +161,6 @@ const Clientes = () => {
 
     return matchesSearch && matchesStatus;
   });
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "lead": return "Lead";
-      case "qualificado": return "Qualificado";
-      case "negociacao": return "Negociação";
-      case "fechado": return "Fechado";
-      case "perdido": return "Perdido";
-      default: return status;
-    }
-  };
-
-  const getPriorityLabel = (prioridade: string) => {
-    switch (prioridade) {
-      case "baixa": return "Baixa";
-      case "media": return "Média";
-      case "alta": return "Alta";
-      default: return prioridade;
-    }
-  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -253,56 +213,16 @@ const Clientes = () => {
         </div>
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableCaption>Lista de clientes</TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Valor Estimado</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClientes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                    {searchTerm ? "Nenhum cliente encontrado." : "Nenhum cliente cadastrado. Adicione um novo cliente."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredClientes.map((cliente) => (
-                  <TableRow key={cliente.id}>
-                    <TableCell className="font-medium">{cliente.nome}</TableCell>
-                    <TableCell>{cliente.empresa}</TableCell>
-                    <TableCell>
-                      <div>{cliente.email}</div>
-                      {cliente.telefone && <div className="text-xs text-muted-foreground">{cliente.telefone}</div>}
-                    </TableCell>
-                    <TableCell>{cliente.valor_estimado}</TableCell>
-                    <TableCell>{getStatusLabel(cliente.status)}</TableCell>
-                    <TableCell>{getPriorityLabel(cliente.prioridade)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditClient(cliente)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setClientToDelete(cliente.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <NotionTable 
+            data={filteredClientes} 
+            onClientUpdated={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })}
+            filterValue={searchTerm}
+          />
         </div>
       )}
 
       <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className={`${isMobile ? 'max-w-[95%]' : 'sm:max-w-[600px]'}`}>
           <DialogHeader>
             <DialogTitle>Adicionar Novo Cliente</DialogTitle>
             <DialogDescription>
@@ -311,7 +231,7 @@ const Clientes = () => {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome do contato</Label>
                 <Input
@@ -335,7 +255,7 @@ const Clientes = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -359,7 +279,7 @@ const Clientes = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="responsavel">Responsável</Label>
                 <Input
@@ -381,7 +301,7 @@ const Clientes = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
@@ -446,13 +366,6 @@ const Clientes = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      <EditClientDialog
-        isOpen={isEditDialogOpen}
-        onClose={handleCloseEditDialog}
-        client={editingClient}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })}
-      />
 
       <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
         <AlertDialogContent>

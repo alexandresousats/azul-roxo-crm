@@ -24,6 +24,27 @@ export const updateClientStatus = async (
   }
 };
 
+export const updateClientPriority = async (
+  clientId: string,
+  prioridade: string,
+  onSuccess?: () => void
+) => {
+  try {
+    const { error } = await supabase
+      .from("clientes")
+      .update({ prioridade })
+      .eq("id", clientId);
+
+    if (error) throw error;
+
+    toast.success(`Prioridade do cliente atualizada para ${prioridade}`);
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error("Erro ao atualizar prioridade:", error);
+    toast.error("Erro ao atualizar prioridade do cliente");
+  }
+};
+
 export const deleteClient = async (
   clientId: string,
   onSuccess?: () => void
