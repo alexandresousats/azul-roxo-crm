@@ -3,8 +3,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Area, AreaChart, Bar, BarChart, Line, LineChart,
-  Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Cell
+  Area, AreaChart, Bar, BarChart, Line, LineChart, PieChart, Pie, Cell,
+  Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Sector
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,7 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedPeriod, setSelectedPeriod] = useState("30");
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Get client data for the current user
   const { data: clientesData = [], isLoading } = useQuery({
@@ -99,15 +100,10 @@ const Dashboard = () => {
     return monthlyRevenue;
   }, [clientesData, selectedYear]);
 
-  // Generate credit usage data (example data similar to the image)
-  const creditUsageData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map(month => ({
-      name: month,
-      current: Math.floor(Math.random() * 5000) + 2000,
-      previous: Math.floor(Math.random() * 4000) + 1000,
-    }));
-  }, []);
+  // Calculate total annual revenue for the selected year
+  const totalAnnualRevenue = useMemo(() => {
+    return revenueData.reduce((total, month) => total + month.value, 0);
+  }, [revenueData]);
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
@@ -164,7 +160,7 @@ const Dashboard = () => {
     };
   }, [clientesData]);
 
-  // Prepare pipeline data
+  // Prepare pipeline data for pie chart
   const pipelineData = useMemo(() => {
     const statusGroups = {
       'lead': { count: 0, value: 0, color: '#9BA1A6' },
@@ -186,12 +182,14 @@ const Dashboard = () => {
     });
 
     // Convert to array format for chart
-    return Object.entries(statusGroups).map(([status, data]) => ({
-      name: status.charAt(0).toUpperCase() + status.slice(1),
-      count: data.count,
-      value: data.value,
-      color: data.color
-    }));
+    return Object.entries(statusGroups)
+      .filter(([_, data]) => data.count > 0) // Only include statuses with data
+      .map(([status, data]) => ({
+        name: status.charAt(0).toUpperCase() + status.slice(1),
+        count: data.count,
+        value: data.value,
+        color: data.color
+      }));
   }, [clientesData]);
 
   // Client revenue data
@@ -246,6 +244,49 @@ const Dashboard = () => {
       case "novo": return "bg-teal-500";
       default: return "bg-slate-500";
     }
+  };
+
+  // Pie chart active sector renderer
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+    const sin = Math.sin(-midAngle * Math.PI / 180);
+    const cos = Math.cos(-midAngle * Math.PI / 180);
+    const sx = cx + (outerRadius + 10) * cos;
+    const sy = cy + (outerRadius + 10) * sin;
+    const mx = cx + (outerRadius + 30) * cos;
+    const my = cy + (outerRadius + 30) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+    const ey = my;
+    const textAnchor = cos >= 0 ? 'start' : 'end';
+  
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          innerRadius={outerRadius + 6}
+          outerRadius={outerRadius + 10}
+          fill={fill}
+        />
+        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
+        <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
+        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#333" fontSize={12}>{`${payload.name}: ${payload.count}`}</text>
+        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#999" fontSize={10}>
+          {`(${formatCurrency(value)})`}
+        </text>
+      </g>
+    );
   };
 
   // Mock user data for the table (similar to the reference image)
@@ -376,156 +417,103 @@ const Dashboard = () => {
         </Card>
       </div>
       
-      {/* Main Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Area Chart - Similar to reference design */}
-        <Card className="border rounded-xl overflow-hidden lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 px-6">
-            <div>
+      {/* Annual Revenue Chart - Converted from "Credits usage" chart */}
+      <Card className="border rounded-xl overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 px-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">{formatCurrency(totalAnnualRevenue)}</span>
+            </div>
+            <CardDescription>
+              Annual Revenue ({selectedYear})
+            </CardDescription>
+          </div>
+          
+          <Select 
+            value={selectedYear} 
+            onValueChange={setSelectedYear}
+          >
+            <SelectTrigger className="w-[150px] h-8 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">149,758</span>
+                <Calendar className="h-3.5 w-3.5" />
+                <SelectValue placeholder="Select year" />
               </div>
-              <CardDescription>
-                Credits usage in the last year
-              </CardDescription>
-            </div>
-            
-            <Select 
-              value={selectedPeriod} 
-              onValueChange={setSelectedPeriod}
-            >
-              <SelectTrigger className="w-[150px] h-8 text-xs">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
-          <CardContent className="pl-2 pt-4">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart 
-                  data={revenueData} 
-                  margin={{ 
-                    top: 5, 
-                    right: 30, 
-                    left: 0, 
-                    bottom: 30 
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map(year => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="pl-2 pt-4">
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart 
+                data={revenueData} 
+                margin={{ 
+                  top: 5, 
+                  right: 30, 
+                  left: 0, 
+                  bottom: 30 
+                }}
+              >
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="name" 
+                  tick={{fontSize: 12}}
+                  axisLine={false}
+                  tickLine={false}
+                  dy={10}
+                />
+                <YAxis 
+                  tick={{fontSize: 12}}
+                  axisLine={false}
+                  tickLine={false}
+                  dx={-10}
+                  tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
+                />
+                <CartesianGrid vertical={false} stroke="#f0f0f0" />
+                <Tooltip 
+                  formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, "Receita"]}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
-                >
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="colorMobile" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{fontSize: 12}}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={10}
-                  />
-                  <YAxis 
-                    tick={{fontSize: 12}}
-                    axisLine={false}
-                    tickLine={false}
-                    dx={-10}
-                    tickFormatter={(value) => `${value}`}
-                  />
-                  <CartesianGrid vertical={false} stroke="#f0f0f0" />
-                  <Tooltip 
-                    formatter={(value) => [`${value}`, "Value"]}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#8884d8" 
-                    strokeWidth={2}
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#8884d8" 
+                  strokeWidth={2}
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-200"></div>
+              <span className="text-xs text-muted-foreground">Mobile</span>
             </div>
-            <div className="flex items-center justify-center gap-4 mt-2">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-gray-200"></div>
-                <span className="text-xs text-muted-foreground">Mobile</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                <span className="text-xs text-muted-foreground">Desktop</span>
-              </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+              <span className="text-xs text-muted-foreground">Desktop</span>
             </div>
-          </CardContent>
-        </Card>
-        
-        {/* Credit Usage Chart */}
-        <Card className="border rounded-xl overflow-hidden">
-          <CardHeader className="pb-1 px-6">
-            <CardTitle className="text-lg">Credit usage</CardTitle>
-            <CardDescription className="text-xs">January - June 2024</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pt-2">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={creditUsageData}
-                  margin={{ top: 20, right: 10, left: 0, bottom: 20 }}
-                  barGap={8}
-                >
-                  <CartesianGrid vertical={false} stroke="#f5f5f5" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    hide={true}
-                  />
-                  <Tooltip
-                    formatter={(value) => [`${value}`, "Credits"]}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="current" fill="#4A5FC1" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="previous" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-6 flex flex-col">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                  <span>+20.4% from last month</span>
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Showing credits usage for the last 6 months
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
       
-      {/* Sales Pipeline */}
+      {/* Sales Pipeline - Changed to Pie Chart */}
       <Card className="border rounded-xl overflow-hidden">
         <CardHeader className="px-6">
           <div className="flex items-center justify-between">
@@ -540,133 +528,43 @@ const Dashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="px-4">
-          <div className="h-[250px]">
+          <div className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={pipelineData} 
-                layout="vertical"
-                margin={{ 
-                  top: 10, 
-                  right: 30, 
-                  left: isMobile ? 50 : 80, 
-                  bottom: 10
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis 
-                  type="number" 
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}`} 
-                />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  width={80}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip 
-                  formatter={(value, name) => [`${value} clientes`, "Quantidade"]} 
-                  labelFormatter={(label) => `Status: ${label}`}
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              <PieChart>
+                <Pie
+                  activeIndex={activeIndex}
+                  activeShape={renderActiveShape}
+                  data={pipelineData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  dataKey="value"
+                  onMouseEnter={(_, index) => setActiveIndex(index)}
+                >
                   {pipelineData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Annual Revenue Chart */}
-      <Card className="border rounded-xl overflow-hidden">
-        <CardHeader className="px-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-lg">Annual Revenue</CardTitle>
-              <CardDescription>Monthly revenue by closed client</CardDescription>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Select 
-                value={selectedYear} 
-                onValueChange={setSelectedYear}
-              >
-                <SelectTrigger className="w-[120px] h-8 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {yearOptions.map(year => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4">
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={revenueData} 
-                margin={{ 
-                  top: 10, 
-                  right: 30, 
-                  left: 0, 
-                  bottom: 20
-                }}
-              >
-                <defs>
-                  <linearGradient id="colorMonthlyRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4A5FC1" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#4A5FC1" stopOpacity={0.2}/>
-                  </linearGradient>
-                </defs>
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis 
-                  tickFormatter={(value) => 
-                    `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                  }
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12 }}
-                />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                </Pie>
                 <Tooltip 
-                  formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, "Faturamento"]}
+                  formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, "Valor"]}
                   contentStyle={{
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                 />
-                <Bar 
-                  dataKey="value" 
-                  name="Valor"
-                  fill="url(#colorMonthlyRevenue)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-3 mt-2">
+            {pipelineData.map((entry, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                <span className="text-xs text-muted-foreground">{entry.name} ({entry.count})</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -734,116 +632,113 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
-      {/* Recent Activities and Users Table */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Recent Activities */}
-        <Card className="border rounded-xl overflow-hidden">
-          <CardHeader className="px-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Recent Activities</CardTitle>
-              <Button variant="ghost" size="sm" className="h-8 px-2">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </div>
-            <CardDescription>Latest client interactions</CardDescription>
-          </CardHeader>
-          <CardContent className="px-6">
-            <div className="space-y-4">
-              {recentActivities.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  No recent activities found
-                </p>
-              ) : (
-                recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-4 rounded-md border p-3">
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium">{activity.name}</p>
-                      <p className="text-xs text-muted-foreground">Company: {activity.company}</p>
-                      <div className="flex items-center pt-1">
-                        <Calendar className="mr-1 h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{activity.date}</span>
-                      </div>
-                    </div>
-                    <div className={`${getStatusColor(activity.status)} text-white text-xs px-2 py-1 rounded-full`}>
-                      {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+      {/* Recent Activities */}
+      <Card className="border rounded-xl overflow-hidden">
+        <CardHeader className="px-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Recent Activities</CardTitle>
+            <Button variant="ghost" size="sm" className="h-8 px-2">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </div>
+          <CardDescription>Latest client interactions</CardDescription>
+        </CardHeader>
+        <CardContent className="px-6">
+          <div className="space-y-4">
+            {recentActivities.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                No recent activities found
+              </p>
+            ) : (
+              recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-4 rounded-md border p-3">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">{activity.name}</p>
+                    <p className="text-xs text-muted-foreground">Company: {activity.company}</p>
+                    <div className="flex items-center pt-1">
+                      <Calendar className="mr-1 h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{activity.date}</span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Users Table - Similar to reference design */}
-        <Card className="border rounded-xl overflow-hidden">
-          <CardHeader className="px-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Users</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8">
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                  <span>Select All</span>
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  0 of {usersData.length} selected
-                </span>
-              </div>
-            </div>
-            <CardDescription>Manage user accounts</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 py-0">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[30px]">
-                      <input type="checkbox" className="rounded border-gray-200" />
-                    </TableHead>
-                    <TableHead>EMAIL ADDRESS</TableHead>
-                    <TableHead>PROVIDER</TableHead>
-                    <TableHead>CREATED</TableHead>
-                    <TableHead>LAST SIGN IN</TableHead>
-                    <TableHead>USER ID</TableHead>
-                    <TableHead className="w-[30px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usersData.map((user, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <input type="checkbox" className="rounded border-gray-200" />
-                      </TableCell>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell>{user.provider}</TableCell>
-                      <TableCell>{user.created}</TableCell>
-                      <TableCell>{user.lastSign}</TableCell>
-                      <TableCell>{user.userId}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex items-center justify-between py-4">
-              <span className="text-sm text-muted-foreground">
-                0 of {usersData.length} row(s) selected.
+                  <div className={`${getStatusColor(activity.status)} text-white text-xs px-2 py-1 rounded-full`}>
+                    {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Users Table */}
+      <Card className="border rounded-xl overflow-hidden">
+        <CardHeader className="px-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Users</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8">
+                <Check className="h-3.5 w-3.5 mr-1" />
+                <span>Select All</span>
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                0 of {usersData.length} selected
               </span>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" className="h-8">
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" className="h-8">
-                  Next
-                </Button>
-              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <CardDescription>Manage user accounts</CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 py-0">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[30px]">
+                    <input type="checkbox" className="rounded border-gray-200" />
+                  </TableHead>
+                  <TableHead>EMAIL ADDRESS</TableHead>
+                  <TableHead>PROVIDER</TableHead>
+                  <TableHead>CREATED</TableHead>
+                  <TableHead>LAST SIGN IN</TableHead>
+                  <TableHead>USER ID</TableHead>
+                  <TableHead className="w-[30px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usersData.map((user, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <input type="checkbox" className="rounded border-gray-200" />
+                    </TableCell>
+                    <TableCell className="font-medium">{user.email}</TableCell>
+                    <TableCell>{user.provider}</TableCell>
+                    <TableCell>{user.created}</TableCell>
+                    <TableCell>{user.lastSign}</TableCell>
+                    <TableCell>{user.userId}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex items-center justify-between py-4">
+            <span className="text-sm text-muted-foreground">
+              0 of {usersData.length} row(s) selected.
+            </span>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" className="h-8">
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" className="h-8">
+                Next
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Footer */}
       <div className="text-sm text-muted-foreground py-6 border-t mt-8">
