@@ -65,9 +65,8 @@ const EditClientDialog = ({
             if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
               setDataFechamento(new Date(year, month - 1, day));
             }
-          } else {
-            // Handle as date object or other type
-            setDataFechamento(new Date(client.data_fechamento));
+          } else if (client.data_fechamento instanceof Date) {
+            setDataFechamento(client.data_fechamento);
           }
         } catch (error) {
           console.error("Error parsing data_fechamento:", error);
@@ -84,9 +83,8 @@ const EditClientDialog = ({
             if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
               setUltimoContato(new Date(year, month - 1, day));
             }
-          } else {
-            // Handle as date object or other type
-            setUltimoContato(new Date(client.ultimo_contato));
+          } else if (client.ultimo_contato instanceof Date) {
+            setUltimoContato(client.ultimo_contato);
           }
         } catch (error) {
           console.error("Error parsing ultimo_contato:", error);
@@ -116,14 +114,11 @@ const EditClientDialog = ({
     setIsLoading(true);
     
     try {
-      // Convert Date objects to string format for database storage
-      const dataToSubmit = {
+      const result = await updateClientInfo(client.id, {
         ...formData,
-        data_fechamento: dataFechamento ? dataFechamento.toISOString().split('T')[0] : undefined,
-        ultimo_contato: ultimoContato ? ultimoContato.toISOString().split('T')[0] : undefined,
-      };
-      
-      const result = await updateClientInfo(client.id, dataToSubmit);
+        data_fechamento: dataFechamento,
+        ultimo_contato: ultimoContato,
+      });
       
       if (result.success) {
         onSaved();

@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 
+// Helper function to format currency
 const formatCurrency = (value: number) => {
   return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
@@ -45,6 +47,7 @@ const Dashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("30");
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Get client data for the current user
   const { data: clientesData = [], isLoading } = useQuery({
     queryKey: ['clientes', user?.id],
     queryFn: async () => {
@@ -65,7 +68,9 @@ const Dashboard = () => {
     enabled: !!user
   });
 
+  // Prepare revenue data by year and month
   const revenueData = useMemo(() => {
+    // Filter clients with closed status and for the selected year
     const closedClients = clientesData
       .filter(cliente => 
         cliente.status === 'fechado' && 
@@ -73,6 +78,7 @@ const Dashboard = () => {
         new Date(cliente.data_fechamento).getFullYear() === parseInt(selectedYear)
       );
 
+    // Group revenue by month
     const monthlyRevenue = Array(12).fill(0).map((_, monthIndex) => {
       const monthRevenue = closedClients
         .filter(cliente => {
@@ -86,21 +92,24 @@ const Dashboard = () => {
       return {
         name: format(new Date(2023, monthIndex), 'MMM', { locale: ptBR }),
         value: monthRevenue,
-        mobile: monthRevenue * 0.4,  
-        desktop: monthRevenue * 0.6
+        mobile: monthRevenue * 0.4,  // Example secondary data for area chart
+        desktop: monthRevenue * 0.6   // Example secondary data for area chart
       };
     });
 
     return monthlyRevenue;
   }, [clientesData, selectedYear]);
 
+  // Calculate total annual revenue for the selected year
   const totalAnnualRevenue = useMemo(() => {
     return revenueData.reduce((total, month) => total + month.value, 0);
   }, [revenueData]);
 
+  // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
     const currentYear = new Date().getFullYear();
     
+    // Total estimated revenue for the current year
     const yearlyRevenue = clientesData
       .filter(cliente => 
         cliente.status === 'fechado' && 
@@ -111,6 +120,7 @@ const Dashboard = () => {
         total + extractNumberFromCurrency(cliente.valor_estimado || "R$ 0"), 
       0);
     
+    // Count closed contracts for the current year
     const closedContracts = clientesData
       .filter(cliente => 
         cliente.status === 'fechado' && 
@@ -118,18 +128,20 @@ const Dashboard = () => {
         new Date(cliente.data_fechamento).getFullYear() === currentYear
       ).length;
     
+    // Count active customers (not lost or disqualified)
     const activeCustomers = clientesData
       .filter(cliente => 
         cliente.status !== 'perdido' && 
         cliente.status !== 'desqualificado'
       ).length;
     
+    // Previous month metrics for percentage calculation
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     
-    const lastMonthYearlyRevenue = yearlyRevenue * 0.8;
-    const lastMonthClosedContracts = Math.floor(closedContracts * 0.9);
-    const lastMonthActiveCustomers = Math.floor(activeCustomers * 0.88);
+    const lastMonthYearlyRevenue = yearlyRevenue * 0.8; // Example for demonstration
+    const lastMonthClosedContracts = Math.floor(closedContracts * 0.9); // Example
+    const lastMonthActiveCustomers = Math.floor(activeCustomers * 0.88); // Example
     
     const percentageChangeRevenue = lastMonthYearlyRevenue ? 
       ((yearlyRevenue - lastMonthYearlyRevenue) / lastMonthYearlyRevenue) * 100 : 0;
@@ -148,6 +160,7 @@ const Dashboard = () => {
     };
   }, [clientesData]);
 
+  // Prepare pipeline data for pie chart
   const pipelineData = useMemo(() => {
     const statusGroups = {
       'lead': { count: 0, value: 0, color: '#9BA1A6' },
@@ -159,6 +172,7 @@ const Dashboard = () => {
       'desqualificado': { count: 0, value: 0, color: '#F39C12' },
     };
 
+    // Group by status
     clientesData.forEach(cliente => {
       const status = cliente.status as keyof typeof statusGroups;
       if (statusGroups[status]) {
@@ -167,8 +181,9 @@ const Dashboard = () => {
       }
     });
 
+    // Convert to array format for chart
     return Object.entries(statusGroups)
-      .filter(([_, data]) => data.count > 0)
+      .filter(([_, data]) => data.count > 0) // Only include statuses with data
       .map(([status, data]) => ({
         name: status.charAt(0).toUpperCase() + status.slice(1),
         count: data.count,
@@ -177,6 +192,7 @@ const Dashboard = () => {
       }));
   }, [clientesData]);
 
+  // Client revenue data
   const clientRevenueData = useMemo(() => {
     return clientesData
       .filter(cliente => extractNumberFromCurrency(cliente.valor_estimado || "R$ 0") > 0)
@@ -184,14 +200,16 @@ const Dashboard = () => {
         extractNumberFromCurrency(b.valor_estimado || "R$ 0") - 
         extractNumberFromCurrency(a.valor_estimado || "R$ 0")
       )
-      .slice(0, 10)
+      .slice(0, 10) // Top 10 clients
       .map(cliente => ({
         name: cliente.empresa,
         value: extractNumberFromCurrency(cliente.valor_estimado || "R$ 0")
       }));
   }, [clientesData]);
 
+  // Recent activities
   const recentActivities = useMemo(() => {
+    // Get clients with last contact date, sorted by most recent
     return clientesData
       .filter(cliente => cliente.ultimo_contato)
       .sort((a, b) => {
@@ -199,7 +217,7 @@ const Dashboard = () => {
         const dateB = new Date(b.ultimo_contato || '').getTime();
         return dateB - dateA;
       })
-      .slice(0, 5)
+      .slice(0, 5) // Get 5 most recent
       .map(cliente => ({
         id: cliente.id,
         name: cliente.nome,
@@ -209,6 +227,7 @@ const Dashboard = () => {
       }));
   }, [clientesData]);
 
+  // Generate year options (last 5 years)
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
@@ -227,6 +246,7 @@ const Dashboard = () => {
     }
   };
 
+  // Pie chart active sector renderer
   const renderActiveShape = (props: any) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
     const sin = Math.sin(-midAngle * Math.PI / 180);
@@ -269,6 +289,7 @@ const Dashboard = () => {
     );
   };
 
+  // Mock user data for the table (similar to the reference image)
   const usersData = useMemo(() => [
     { email: "cliente1@exemplo.com", provider: "Google", created: "06 Jun, 2023 11:33", lastSign: "16 Jun, 2023 11:33", userId: "f3f42fc419-ce32-49fc-92df..." },
     { email: "cliente2@exemplo.com", provider: "Google", created: "06 Jun, 2023 11:29", lastSign: "15 Jun, 2023 11:29", userId: "f3f42fc419-ce32-49fc-92df..." },
@@ -301,7 +322,8 @@ const Dashboard = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border rounded-xl overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2 px-6">
             <div className="flex items-center gap-2">
@@ -395,6 +417,7 @@ const Dashboard = () => {
         </Card>
       </div>
       
+      {/* Annual Revenue Chart - Converted from "Credits usage" chart */}
       <Card className="border rounded-xl overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2 px-6">
           <div>
@@ -490,124 +513,126 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border rounded-xl overflow-hidden">
-          <CardHeader className="px-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Sales Pipeline</CardTitle>
-                <CardDescription>Distribution of clients by sales stage</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                <span>Filter</span>
-              </Button>
+      {/* Sales Pipeline - Changed to Pie Chart */}
+      <Card className="border rounded-xl overflow-hidden">
+        <CardHeader className="px-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Sales Pipeline</CardTitle>
+              <CardDescription>Distribution of clients by sales stage</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    activeIndex={activeIndex}
-                    activeShape={renderActiveShape}
-                    data={pipelineData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80}
-                    outerRadius={120}
-                    dataKey="value"
-                    onMouseEnter={(_, index) => setActiveIndex(index)}
-                  >
-                    {pipelineData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, "Valor"]}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-2">
-              {pipelineData.map((entry, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                  <span className="text-xs text-muted-foreground">{entry.name} ({entry.count})</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border rounded-xl overflow-hidden">
-          <CardHeader className="px-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Revenue by Client</CardTitle>
-                <CardDescription>Estimated value per client</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="h-8">
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={clientRevenueData} 
-                  layout="vertical"
-                  margin={{ 
-                    top: 10, 
-                    right: 30, 
-                    left: isMobile ? 90 : 120, 
-                    bottom: 0 
-                  }}
+            <Button variant="outline" size="sm" className="h-8 gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Filter</span>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4">
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  activeIndex={activeIndex}
+                  activeShape={renderActiveShape}
+                  data={pipelineData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  dataKey="value"
+                  onMouseEnter={(_, index) => setActiveIndex(index)}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                  <XAxis 
-                    type="number" 
-                    tickFormatter={(value) => 
-                      `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                    }
-                    axisLine={false}
-                    tickLine={false} 
-                  />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    width={isMobile ? 90 : 120}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, "Valor"]}
-                    labelFormatter={(label) => `Cliente: ${label}`}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Bar 
-                    dataKey="value" 
-                    fill="#7E57C2" 
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  {pipelineData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, "Valor"]}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-3 mt-2">
+            {pipelineData.map((entry, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                <span className="text-xs text-muted-foreground">{entry.name} ({entry.count})</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
       
+      {/* Client Revenue Chart */}
+      <Card className="border rounded-xl overflow-hidden">
+        <CardHeader className="px-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Revenue by Client</CardTitle>
+              <CardDescription>Estimated value per client</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" className="h-8">
+              View All
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4">
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={clientRevenueData} 
+                layout="vertical"
+                margin={{ 
+                  top: 10, 
+                  right: 30, 
+                  left: isMobile ? 90 : 120, 
+                  bottom: 0 
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                <XAxis 
+                  type="number" 
+                  tickFormatter={(value) => 
+                    `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                  }
+                  axisLine={false}
+                  tickLine={false} 
+                />
+                <YAxis 
+                  type="category" 
+                  dataKey="name" 
+                  width={isMobile ? 90 : 120}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, "Valor"]}
+                  labelFormatter={(label) => `Cliente: ${label}`}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="#7E57C2" 
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Recent Activities */}
       <Card className="border rounded-xl overflow-hidden">
         <CardHeader className="px-6">
           <div className="flex items-center justify-between">
@@ -645,6 +670,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
+      {/* Users Table */}
       <Card className="border rounded-xl overflow-hidden">
         <CardHeader className="px-6">
           <div className="flex items-center justify-between">
@@ -714,6 +740,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       
+      {/* Footer */}
       <div className="text-sm text-muted-foreground py-6 border-t mt-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <p>© 2024 Azul-Roxo CRM. All Rights Reserved.</p>
