@@ -1,6 +1,6 @@
+
 import { useState } from "react";
 import { Cliente } from "@/types/cliente";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -16,16 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { 
-  User, Building, Flag, Calendar, Mail, 
-  Phone, Link as LinkIcon, DollarSign, ClipboardList, 
-  Star, X, CheckCircle, AlertTriangle, Lock, Plus, GitCompare
+  User, Building, Calendar, Mail, 
+  Phone, DollarSign, Star, X, CheckCircle, 
+  AlertTriangle, Lock, Plus, GitCompare
 } from "lucide-react";
 import { updateClientStatus, updateClientPriority } from "@/utils/client-helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import EditClientDialog from "./EditClientDialog";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface NotionTableProps {
   data: Cliente[];
@@ -69,22 +69,60 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case "alta": return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case "media": return <Flag className="h-4 w-4 text-amber-500" />;
-      case "baixa": return <Flag className="h-4 w-4 text-blue-400" />;
-      default: return <Flag className="h-4 w-4 text-gray-500" />;
+      case "media": return <AlertTriangle className="h-4 w-4 rotate-180 text-amber-500" />;
+      case "baixa": return <AlertTriangle className="h-4 w-4 rotate-180 text-blue-400" />;
+      default: return <AlertTriangle className="h-4 w-4 text-gray-500 rotate-180" />;
     }
   };
 
   // Format date function
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
+    
     try {
-      return format(new Date(dateString), "dd/MM/yyyy");
+      // Try to parse ISO format first
+      let date = new Date(dateString);
+      
+      // Check if we got a valid date
+      if (!isNaN(date.getTime())) {
+        return format(date, "dd/MM/yyyy", { locale: ptBR });
+      }
+      
+      // Try to parse DD/MM/YYYY format
+      date = parse(dateString, "dd/MM/yyyy", new Date());
+      if (isValid(date)) {
+        return format(date, "dd/MM/yyyy", { locale: ptBR });
+      }
+      
+      return dateString;
     } catch (e) {
       return dateString;
     }
   };
 
+  // Get status display name
+  const getStatusName = (status: string) => {
+    switch (status) {
+      case "lead": return "Lead";
+      case "qualificado": return "Qualificado";
+      case "negociacao": return "Negociação";
+      case "fechado": return "Fechado";
+      case "perdido": return "Perdido";
+      case "novo": return "Novo";
+      case "desqualificado": return "Desqualificado";
+      default: return status;
+    }
+  };
+
+  // Get priority display name
+  const getPriorityName = (priority: string) => {
+    switch (priority) {
+      case "alta": return "Alta";
+      case "media": return "Média";
+      case "baixa": return "Baixa";
+      default: return priority;
+    }
+  };
   
   return (
     <div className="overflow-x-auto w-full">
@@ -110,12 +148,12 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
             data.map((client) => (
               <TableRow 
                 key={client.id} 
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer transition-all hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/30"
                 onClick={() => handleEditClick(client)}
               >
                 <TableCell>
                   <div className="flex items-start gap-2">
-                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <User className="h-5 w-5 text-roxo mt-0.5" />
                     <div>
                       <div className="font-medium">{client.nome}</div>
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -150,7 +188,7 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                     <SelectTrigger className="w-[130px]">
                       <div className="flex items-center gap-2">
                         {getStatusIcon(client.status)}
-                        <SelectValue />
+                        <span>{getStatusName(client.status)}</span>
                       </div>
                     </SelectTrigger>
                     <SelectContent>
@@ -208,7 +246,7 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                     <SelectTrigger className="w-[110px]">
                       <div className="flex items-center gap-2">
                         {getPriorityIcon(client.prioridade)}
-                        <SelectValue />
+                        <span>{getPriorityName(client.prioridade)}</span>
                       </div>
                     </SelectTrigger>
                     <SelectContent>
@@ -220,13 +258,13 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                       </SelectItem>
                       <SelectItem value="media">
                         <div className="flex items-center gap-2">
-                          <Flag className="h-4 w-4 text-amber-500" />
+                          <AlertTriangle className="h-4 w-4 rotate-180 text-amber-500" />
                           <span>Média</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="baixa">
                         <div className="flex items-center gap-2">
-                          <Flag className="h-4 w-4 text-blue-400" />
+                          <AlertTriangle className="h-4 w-4 rotate-180 text-blue-400" />
                           <span>Baixa</span>
                         </div>
                       </SelectItem>
@@ -237,7 +275,7 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
                 {!isMobile && (
                   <TableCell>
                     <div className="flex items-center">
-                      <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
+                      <DollarSign className="h-4 w-4 text-green-600 mr-1" />
                       {client.valor_estimado || "R$ 0"}
                     </div>
                   </TableCell>

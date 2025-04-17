@@ -11,11 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Settings, User, LogOut, CreditCard, Moon, Filter } from "lucide-react";
+import { LogOut, Moon, Settings, User } from "lucide-react";
 import { toast } from "sonner";
 
 const Header = () => {
-  const [notifications, setNotifications] = useState(3);
   const navigate = useNavigate();
   
   const handleLogout = () => {
@@ -30,9 +29,6 @@ const Header = () => {
         <div className="flex items-center gap-x-3">
           <Button variant="outline" size="icon" className="rounded-full h-9 w-9">
             <Moon className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-full h-9 w-9">
-            <Filter className="h-4 w-4" />
           </Button>
           
           <DropdownMenu>
@@ -62,20 +58,16 @@ const Header = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Perfil</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/upgrade")}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Billing</span>
+                <span>Configurações</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>Sair</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
