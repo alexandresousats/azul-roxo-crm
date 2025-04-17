@@ -1,3 +1,4 @@
+
 import { Cliente } from "@/types/cliente";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,14 +74,18 @@ export const updateClientInfo = async (
     // Convert date objects to ISO string format for database storage
     const dataToSave = { ...clientData };
     
-    // Handle ultimo_contato date conversion
-    if (clientData.ultimo_contato instanceof Date) {
-      dataToSave.ultimo_contato = clientData.ultimo_contato.toISOString().split('T')[0];
+    // Process ultimo_contato for database storage
+    if (clientData.ultimo_contato) {
+      if (typeof clientData.ultimo_contato === 'string') {
+        dataToSave.ultimo_contato = clientData.ultimo_contato;
+      }
     }
     
-    // Handle data_fechamento date conversion
-    if (clientData.data_fechamento instanceof Date) {
-      dataToSave.data_fechamento = clientData.data_fechamento.toISOString().split('T')[0];
+    // Process data_fechamento for database storage
+    if (clientData.data_fechamento) {
+      if (typeof clientData.data_fechamento === 'string') {
+        dataToSave.data_fechamento = clientData.data_fechamento;
+      }
     }
 
     const { error } = await supabase

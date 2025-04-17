@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Cliente } from "@/types/cliente";
 import { Button } from "@/components/ui/button";
@@ -86,6 +85,7 @@ const NotionTable = ({ data, onClientUpdated, filterValue }: NotionTableProps) =
     }
   };
 
+  
   return (
     <div className="overflow-x-auto w-full">
       <Table className="min-w-full">
