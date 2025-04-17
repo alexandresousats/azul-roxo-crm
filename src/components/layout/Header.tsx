@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Settings, User, LogOut, CreditCard } from "lucide-react";
+import { Bell, Settings, User, LogOut, CreditCard, Moon, Filter } from "lucide-react";
 import { toast } from "sonner";
 
 const Header = () => {
@@ -25,58 +25,27 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-x-4">
-          <div className="hidden md:block">
-            <h2 className="text-lg font-semibold tracking-tight bg-gradient-to-r from-azul to-roxo inline-block text-transparent bg-clip-text">
-              Azul-Roxo CRM
-            </h2>
-          </div>
-        </div>
-        <div className="flex items-center gap-x-2">
+    <header className="sticky top-0 z-30 w-full bg-white border-b">
+      <div className="flex h-14 items-center justify-end px-4">
+        <div className="flex items-center gap-x-3">
+          <Button variant="outline" size="icon" className="rounded-full h-9 w-9">
+            <Moon className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="rounded-full h-9 w-9">
+            <Filter className="h-4 w-4" />
+          </Button>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="relative"
+                className="relative h-9 w-9 rounded-full"
               >
-                <Bell className="h-4 w-4" />
-                {notifications > 0 && (
-                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <span className="font-medium">Nova tarefa adicionada</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span className="font-medium">Cliente atualizado</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span className="font-medium">Reunião agendada</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-center cursor-pointer text-muted-foreground">
-                Marcar todas como lidas
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost"
-                className="relative h-8 w-8 rounded-full"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder.svg" alt="@user" />
-                  <AvatarFallback className="bg-gradient-to-br from-azul to-roxo text-white">
-                    AR
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src="/placeholder.svg" alt="AP" />
+                  <AvatarFallback className="bg-slate-200 text-slate-800 font-medium">
+                    AP
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -84,29 +53,29 @@ const Header = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Usuário Demo</p>
+                  <p className="text-sm font-medium leading-none">Adela Parkson</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    usuario@demo.com
+                    adela@example.com
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Editar Perfil</span>
+                <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Configurações</span>
+                <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/upgrade")}>
                 <CreditCard className="mr-2 h-4 w-4" />
-                <span>Upgrade de Conta</span>
+                <span>Billing</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Sair</span>
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

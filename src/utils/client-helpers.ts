@@ -76,16 +76,12 @@ export const updateClientInfo = async (
     
     // Process ultimo_contato for database storage
     if (clientData.ultimo_contato) {
-      if (typeof clientData.ultimo_contato === 'string') {
-        dataToSave.ultimo_contato = clientData.ultimo_contato;
-      }
+      dataToSave.ultimo_contato = clientData.ultimo_contato;
     }
     
     // Process data_fechamento for database storage
     if (clientData.data_fechamento) {
-      if (typeof clientData.data_fechamento === 'string') {
-        dataToSave.data_fechamento = clientData.data_fechamento;
-      }
+      dataToSave.data_fechamento = clientData.data_fechamento;
     }
 
     const { error } = await supabase
