@@ -424,7 +424,7 @@ const Dashboard = () => {
             </SelectContent>
           </Select>
         </CardHeader>
-        <CardContent className="pl-2 pt-4">
+        <CardContent className="pl-2 pt-4 mx-[22px] my-[9px] px-[44px]">
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData} margin={{
