@@ -44,7 +44,7 @@ const Sidebar = ({ className }: SidebarProps) => {
   return (
     <div
       className={cn(
-        "flex h-screen flex-col border-r bg-white transition-all duration-300 relative",
+        "flex h-screen flex-col border-r bg-background transition-all duration-300 relative",
         collapsed ? "w-16" : "w-64",
         className
       )}
@@ -238,13 +238,13 @@ const Sidebar = ({ className }: SidebarProps) => {
       
       {!collapsed && (
         <div className="border-t p-4">
-          <div className="bg-slate-50 rounded-lg p-3 flex gap-3 items-center">
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">
+          <div className="bg-muted rounded-lg p-3 flex gap-3 items-center">
+            <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
               AP
             </div>
             <div className="flex-1">
               <p className="text-xs font-medium">PRO Member</p>
-              <p className="text-xs text-slate-400">Unlimited plan active</p>
+              <p className="text-xs text-muted-foreground">Unlimited plan active</p>
             </div>
           </div>
         </div>
@@ -254,3 +254,4 @@ const Sidebar = ({ className }: SidebarProps) => {
 };
 
 export default Sidebar;
+

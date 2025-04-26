@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 const MainLayout = () => {
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+      <div className="flex h-screen w-full overflow-hidden bg-background">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
@@ -23,3 +23,4 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
+
