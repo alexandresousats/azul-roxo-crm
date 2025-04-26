@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -309,16 +308,10 @@ const Dashboard = () => {
           <h2 className="text-3xl font-bold tracking-tight">Main Dashboard</h2>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <Button variant="outline" size="icon" className="rounded-full">
             <Moon className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="rounded-full">
-            <Filter className="h-4 w-4" />
-          </Button>
-          <div className="bg-background rounded-full h-8 w-8 flex items-center justify-center border">
-            <span className="text-sm font-medium">AP</span>
-          </div>
         </div>
       </div>
       
